@@ -5,7 +5,11 @@ use image::{ExtendedColorType, ImageEncoder, ImageError};
 use image::codecs::png::PngEncoder;
 use num::Complex;
 
-pub fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize)) -> Result<(), ImageError> {
+pub fn write_image(
+    filename: &str,
+    pixels: &[u8],
+    bounds: (usize, usize),
+) -> Result<(), ImageError> {
     let output = File::create(filename)?;
     let encoder = PngEncoder::new(output);
 
@@ -49,14 +53,6 @@ pub fn parse_pair<T: FromStr>(value: &str, separator: char) -> Option<(T, T)> {
     }
 }
 
-#[test]
-fn test_parse_pair() {
-    assert_eq!(parse_pair::<i32>("", 'x'), None);
-
-    assert_eq!(parse_pair::<i32>("10,20", ','), Some((10, 20)));
-    assert_eq!(parse_pair::<i32>("10x20", 'x'), Some((10, 20)));
-}
-
 pub fn pixel_to_point(
     bounds: (usize, usize),
     pixel: (usize, usize),
@@ -74,22 +70,6 @@ pub fn pixel_to_point(
     }
 }
 
-#[test]
-fn test_pixel_to_point() {
-    assert_eq!(
-        pixel_to_point(
-            (100, 200),
-            (25, 175),
-            Complex { re: -1.0, im: 1.0 },
-            Complex { re: 1.0, im: -1.0 },
-        ),
-        Complex {
-            re: -0.5,
-            im: -0.75,
-        }
-    );
-}
-
 /// Parse a pair of floating-point numbers separated by a comma as a complex
 /// number.
 pub fn parse_complex(s: &str) -> Option<Complex<f64>> {
@@ -97,18 +77,6 @@ pub fn parse_complex(s: &str) -> Option<Complex<f64>> {
         Some((re, im)) => Some(Complex { re, im }),
         None => None,
     }
-}
-
-#[test]
-fn test_parse_complex() {
-    assert_eq!(
-        parse_complex("1.25,-0.0625"),
-        Some(Complex {
-            re: 1.25,
-            im: -0.0625,
-        })
-    );
-    assert_eq!(parse_complex(",-0.0625"), None);
 }
 
 pub fn render(
@@ -128,5 +96,65 @@ pub fn render(
                 Some(count) => 255 - count as u8,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num::Complex;
+
+    use crate::utils::{parse_complex, parse_pair, pixel_to_point};
+
+    use super::*;
+
+    #[test]
+    fn test_pixel_to_point() {
+        assert_eq!(
+            pixel_to_point(
+                (100, 200),
+                (25, 175),
+                Complex { re: -1.0, im: 1.0 },
+                Complex { re: 1.0, im: -1.0 },
+            ),
+            Complex {
+                re: -0.5,
+                im: -0.75,
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_pair() {
+        assert_eq!(parse_pair::<i32>("", 'x'), None);
+
+        assert_eq!(parse_pair::<i32>("10,20", ','), Some((10, 20)));
+        assert_eq!(parse_pair::<i32>("10x20", 'x'), Some((10, 20)));
+    }
+
+    #[test]
+    fn test_parse_complex() {
+        assert_eq!(
+            parse_complex("1.25,-0.0625"),
+            Some(Complex {
+                re: 1.25,
+                im: -0.0625,
+            })
+        );
+        assert_eq!(parse_complex(",-0.0625"), None);
+    }
+
+    #[test]
+    fn test_render() {
+        let bounds = (3, 3);
+        let upper_left = Complex { re: -2.0, im: 1.0 };
+        let lower_right = Complex { re: 1.0, im: -1.0 };
+        let mut pixels = vec![0; bounds.0 * bounds.1];
+
+        render(&mut pixels, bounds, upper_left, lower_right);
+
+        // Expected values based on the escape time mock function
+        let expected_pixels = vec![254, 252, 0, 254, 244, 0, 254, 244, 0];
+
+        assert_eq!(pixels, expected_pixels);
     }
 }
